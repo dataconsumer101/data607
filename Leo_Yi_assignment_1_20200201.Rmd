@@ -1,0 +1,86 @@
+---
+title: "DATA607 Assignment, Week 1"
+author: "Leo Yi"
+date: "2020-02-01"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Steak Survey
+
+This dataset is a survey of 550 Americans and tests for individual risk behaviors as well as steak preference. The article below summarizes the results of the information, where no correlation is found. The article can be found here:  
+<https://fivethirtyeight.com/features/how-americans-like-their-steak/>
+
+As part of this assignment, we'll be cleaning up the dataset and counting risky behaviors for each individual in order to assign a risk level.  
+
+## Code
+
+First, we load the packages we'll be using today:
+```{r, message = F, warning = F, results = F}
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+```  
+
+Next, let's load the data from the github website into the 'raw' object:
+
+```{r, eval = T}
+raw <- read.csv(url('https://raw.githubusercontent.com/fivethirtyeight/data/master/steak-survey/steak-risk-survey.csv'),
+                stringsAsFactors = F)
+```  
+
+Let check what the data looks like:
+```{r, eval = T}
+head(raw)
+```  
+
+It looks like the first row of data doesn't have an id, so lets start by only keeping the rows with IDs:
+```{r, eval = T}
+df <- filter(raw, !is.na(RespondentID))
+```
+
+Next, lets clean up the column names:
+```{r, eval = T}
+names(df) <- c('id', 'lottery_choice', 'smoker', 'drinker', 'gambler', 'skydiver',
+               'speeder', 'cheater', 'carnivore', 'doneness_pref', 'gender',
+               'age_group', 'income_lvl', 'education_lvl', 'region')
+
+```
+
+It looks like the risk related questions that were asked are yes/no questions. Let's change those to ones and zeros to quantify risk levels per person. Lets also fill in blanks with 0's.
+```{r, eval = T}
+df[df == 'Yes'] <- 1
+df[df == 'No'] <- 0
+df[df == ''] <- 0
+```  
+
+Next, we'll create a new field that counts the risky behaviors for each person:
+```{r, eval = T, results = F}
+df$risk_level <- as.numeric(df$smoker) + as.numeric(df$drinker) + as.numeric(df$gambler) 
+  + as.numeric(df$skydiver) + as.numeric(df$speeder) + as.numeric(df$cheater) + as.numeric(df$carnivore)
+```
+
+Lets rearrange the doneness by temperature so that any plotting is easier to read:
+```{r, eval = T}
+df$doneness_pref <- factor(df$doneness_pref, level = c('Rare', 'Medium rare', 'Medium', 'Medium Well', 'Well'))
+```
+
+Lastly, lets plot the risk levels by doneness preference and see if we see anything interesting:
+```{r, eval = T}
+filter(df, !is.na(doneness_pref)) %>%
+ggplot(aes(x = doneness_pref)) +
+  geom_bar() +
+  facet_wrap(~factor(risk_level), scale = 'free_y') +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+## Conclusion
+
+The doneness preferences by individual risk level seem to match the overall distribution as seen in the article. It looks like a person's risk aversion has very little effect on their preference for how their steak is cooked!
+
+
+
+
