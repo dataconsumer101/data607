@@ -1,0 +1,86 @@
+---
+title: "Data607 Presentation"
+author: "Leo Yi"
+date: "2020-02-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+***
+### Introduction
+* Business Intelligence Analyst at OnDeck
+
+### Data Reduction
+
+* One way to analyze data
+* Summary of a larger dataset
+* Easier to digest
+* Fewer rows
+* See results rather than data points
+* Less detailed
+
+***
+
+#### Do You Know Where America Stands On Guns?
+* This is a FiveThirtyEight project found [here](https://projects.fivethirtyeight.com/guns-parkland-polling-quiz/)
+* The article asks you to guess the level of support for different measures regarding gun control
+  + What share of Americans support stricter gun laws?
+  + What share of Americans support raising the minimum purchase age to 21?
+  + What share of Americans support background checks for all gun purchases?
+  + What share of Americans support blocking gun sales to people with a history of mental illness?
+  + What share of Americans support arming teachers?
+  + What share of Americans support banning assault weapons?
+  + What share of Americans support banning high-capacity ammunition magazines?
+  + What share of Americans support outlawing all guns?
+* The answers are summaries of multiple surveys
+  + Overall % of Americans who support the subject
+  + Republican support
+  + Democratic support
+* We'll be looking at the raw data found on GitHub.  
+
+***
+#### Using R for Data Reduction
+First, we'll load the data into a dataframe object:
+```{r load, eval = T}
+df <- read.csv(url('https://raw.githubusercontent.com/fivethirtyeight/data/master/poll-quiz-guns/guns-polls.csv'), stringsAsFactors = F)
+```  
+
+Next, we'll take a peek at the dataset:
+```{r check, eval = T}
+str(df)
+head(df)
+```  
+
+For now, we only want to see the overall, republican, and democratic support levels for each of the questions.
+We'll use the dplyr package to reduce the data to look at the average support by question:
+```{r lib, eval = T, message = F, warning = F, results = F}
+library(dplyr)
+```
+
+```{r group, eval = T}
+reduced <- group_by(df, Question) %>%
+  summarize(overall = mean(Support),
+            republican = mean(Republican.Support),
+            democratic = (mean(Democratic.Support)))
+reduced
+```  
+
+We can also include the population, which shows whether the respondents are registered voters:
+```{r reg_v, eval = T}
+reduced_pop <- group_by(df, Question, Population) %>%
+  summarize(overall = mean(Support),
+            republican = mean(Republican.Support),
+            democratic = (mean(Democratic.Support))) %>%
+  arrange(Question, Population)
+reduced_pop
+```
+
+
+
+
+
+
+
+
