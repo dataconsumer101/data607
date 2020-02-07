@@ -1,4 +1,4 @@
-drop table movies;
+--drop table movies;
 create table movies (
  	respondent varchar(50),
  	joker int,
@@ -16,4 +16,4 @@ insert into movies (respondent, joker, it_2, parasite, ready_or_not, avengers_en
 insert into movies (respondent, joker, it_2, parasite, ready_or_not, avengers_endgame, star_wars_9) values ('Jess', NULL,3,4,5,4,3);
 insert into movies (respondent, joker, it_2, parasite, ready_or_not, avengers_endgame, star_wars_9) values ('Steve', 5,4,NULL,4,5,3);
 
-select * from movies;
+--select * from movies;
