@@ -1,0 +1,79 @@
+---
+title: "Data607 Assignment 2"
+author: "Leo Yi"
+date: "2020-02-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Movie Survey
+
+This assignment is a survey of 5 individuals. Each individual was asked to rate the following movies on a scale of 1 to 5.
+* Joker
+* It 2
+* Parasite
+* Ready or Not
+* Avengers Endgame
+* Star Wars: Return of the Jedi  
+
+The survey results were stored in a SQL table in pgAdmin4 using postgres. You can see the SQL code [here](https://github.com/dataconsumer101/data607/blob/master/movies.sql).  
+
+The table was created and then exported as a csv, which was uploaded to GitHub as well. We'll grab the raw results from there:
+
+```{r get, eval = T}
+raw <- read.csv(url('https://raw.githubusercontent.com/dataconsumer101/data607/master/movies.csv'))
+str(raw)
+head(raw)
+```  
+
+There are *NA* values within the dataset because every person isn't really expected to see every movie.  
+
+Lets rearrange the data using tidyr so its easier to analyze:
+
+```{r, eval = T, results = F, warning = F, error = F, echo = F}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r gather, eval = T}
+df <- gather(raw, movie, rating, -respondent)
+head(df)
+```  
+
+Lets looking at the average rating for each movie:
+
+```{r avg, eval = T}
+(g <- group_by(df, movie) %>%
+  summarize(avg_rating = mean(rating, na.rm = T)) %>%
+  arrange(desc(avg_rating)))
+```  
+
+I'm also interested in which movies were most popular, so lets count how many people saw them:
+```{r count, eval = T}
+df$counter <- ifelse(is.na(df$rating),0,1)
+(c <- group_by(df, movie) %>%
+  summarize(views = sum(counter)) %>%
+    arrange(desc(views)))
+```
+
+Finally, lets visualize the results so that its a bit easier to digest.  
+
+```{r viz, eval = T}
+ggplot(c, aes(x = movie, y = views)) +
+  geom_col() +
+  ggtitle('Movies by Popularity') +
+  theme_classic()  
+
+ggplot(g, aes(x = movie, y = avg_rating)) +
+  geom_col() +
+  ggtitle('Average Rating of Movie Survey') +
+  theme_classic()
+```
+
+##### It looks like a survey of 5 people isn't necessarily going to be a great representation of the population.
+
+
