@@ -1,0 +1,120 @@
+---
+title: "Data607 Project 1"
+author: "Leo Yi"
+date: "2020-02-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Introduction
+
+For this project, we are working with a text file that has been formatted as a table with various characters. Without word wrap, the text file is organized into two row cells. Each player has an number associated to them, which we'll use to identify them. The ultimate goal is to create a csv file which can be uploaded into a database or even just usable in excel.
+
+---
+
+### Method
+
+We'll be using the tidyverse for this project, specifically the following packages:
+
+```{r, eval = T, warning = F, error = F, message = F}
+library(stringr)
+library(dplyr)
+library(tidyr)
+```  
+  
+Next, we'll need to get the text file into a dataframe object. I've already uploaded the text file to my github since the link on blackboard was restricted:
+
+```{r, eval = T}
+t <- read.csv(url('https://raw.githubusercontent.com/dataconsumer101/data607/master/tournamentinfo.txt'), stringsAsFactors = F)
+
+head(t)
+```
+
+It looks like the entire text file was brought in as one field, named 'X...........'-- Let's rename that field to make things a bit easier.
+
+```{r, eval = T}
+names(t) <- 'x'
+```
+
+Now that we have the dataframe, t, and field, x, ready to reference, lets start by extracting each player's ID. This is the first number that shows up before each name. Luckily the pattern is easy here, we'll look at the start of each line, look for blank space, and then grab the first number. We'll trim off the white space to just keep the digits.
+
+```{r, eval = T}
+t$id <- str_extract(t$x, '^\\s+\\d+') %>% 
+  str_trim()
+```
+
+Next, we'll find the two letter state from the following line. We'll use the lead window function here to search the next line since the state code is located on the 2nd line near the beginning. We'll use a similiar pattern used to find the player ID, except we'll look for two letters. Again, we'll trim the whitespace to keep just the letters.
+
+```{r, eval = T}
+t$state <- str_extract(lead(t$x), '^\\s*\\w{2}') %>%
+  str_trim()
+```
+
+Also on the next line, we'll need to grab the player rating. It is a number after the string 'R:'. We'll locate the pattern, then strip out the 'R:' indicator, and trim the whitespace.
+
+```{r, eval = T}
+t$rating <- str_extract(lead(t$x), 'R:\\s+\\d+')
+
+t$player_rating <- substr(t$rating, 3, nchar(t$rating)) %>% 
+  str_trim() %>% 
+  as.numeric()
+```
+
+I'd like to create another dataframe from here forward. I do this normally to create check points for all the changes made. Since we grabbed all the information from the 2nd line, we can filter those rows out and have one row per player.
+
+```{r, eval = T}
+players <- filter(t, !is.na(id))
+```
+
+This next step was to extract all values in the first line between the vertical line pipes '|'. We'll do this by creating groups for everything that start with a pipe and everything up until the next one. The order of these groups is converted to:  
+
+* Player's Name
+  * Pattern: letters, one space, letters
+* Player's Points
+  * Pattern: remove first pipe, trim white space
+* Opponents for Rounds 1 - 7
+  * Pattern: extract digits only
+
+We'll loop through each row and process one line at a time.
+  
+```{r, eval = T}  
+for (i in 1:nrow(players)) {
+  
+  grps <- unlist(str_extract_all(players$x[i], '[|].+?(?=[|])'))
+  
+  players$name[i] <- str_extract(grps[1], '\\w+\\s\\w+')
+  
+  players$points[i] <- substr(grps[2], 2, nchar(grps[2])) %>%
+    str_trim() %>%
+    as.numeric()
+  
+  players$opponent_1[i] <- str_extract(grps[3], '\\d+')
+  players$opponent_2[i] <- str_extract(grps[4], '\\d+')
+  players$opponent_3[i] <- str_extract(grps[5], '\\d+')
+  players$opponent_4[i] <- str_extract(grps[6], '\\d+')
+  players$opponent_5[i] <- str_extract(grps[7], '\\d+')
+  players$opponent_6[i] <- str_extract(grps[8], '\\d+')
+  players$opponent_7[i] <- str_extract(grps[9], '\\d+')
+  
+}
+
+```
+
+Now that we have all the fields we need, the plan is to use dplyr to gather the opponent columns into rows so that we can join the ratings and calculate the average. We'll create a ratings lookup dataframe, which will supply the ratings by player id, then create a final dataframe which will perform all the final steps of tidying, including sorting by player rating.
+
+```{r, eval = T}
+rating_lu <- select(players, id, opp_rating = player_rating)
+
+final <- select(players, -x, -rating) %>%
+  gather(opponent, opp_id, -id, -player_rating, -name, -state, -points) %>%
+  left_join(rating_lu, by = c('opp_id' = 'id')) %>%
+  group_by(name, state, points, player_rating) %>%
+  summarize(avg_opponent_rating = round(mean(opp_rating, na.rm = T),0)) %>%
+  arrange(desc(player_rating))
+
+head(final)
+```
+
