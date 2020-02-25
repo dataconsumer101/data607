@@ -1,0 +1,179 @@
+---
+title: "Data607 Assignment 5"
+author: "Leo Yi"
+date: "2020-02-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Intro
+
+This week's assignment is to take a table of flight delays, enter that information into a csv file, then tidy, transform, and analyze the information in R.  
+
+The information we'll be looking at today looks like counts of flights that we either on time or delayed for two airlines. The information is available by arrival airport location.  
+
+The csv has been prepared and uploaded to github to make this Rmarkdown reproducible.
+
+---
+
+#### Method
+
+Lets start by loading the libraries we'll be using. We'll use dplyr and tidyr to organize the data and ggplot to visualize it.
+
+```{r, eval = T, warnings = F, errors = F, message = F}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+Next, lets import the data from github into a dataframe object:
+
+```{r, eval = T}
+(raw <- read.csv(url('https://raw.githubusercontent.com/dataconsumer101/data607/master/assignment_5_source_table.csv'), stringsAsFactors = F, check.names = F))
+```
+
+It looks like the first two columns need names. The first column is the airline name and the second indicates whether the flight was on time or not- we'll call that the flight status.
+
+```{r, eval = T}
+names(raw)[1] <- 'airline'
+names(raw)[2] <- 'status'
+```
+
+Next, we'll need to fill in the airline for row 2 and 5 as well as remove the blank row in the middle:
+
+```{r, eval = T}
+raw$airline[2] <- 'ALASKA'
+raw$airline[5] <- 'AM WEST'
+
+(raw <- filter(raw, nchar(airline) > 0))
+```
+
+Lets gather the locations into a variable field using tidyr:
+
+```{r, eval = T}
+df <- gather(raw, airport, flight_count, -airline, -status)
+head(df)
+```
+
+I think the next logical step would be to convert all these flight status counts to rates, so that we can compare the two airlines at the same level.  
+
+Lets look at it two ways- the airline delay rate across each arrival location and also in aggregate. Lets prepare the dataframe by calculating the totals on each level, then joining back to the original dataset.
+
+Lets check the overall rates first:
+
+```{r, eval = T}
+airline_total <- group_by(df, airline) %>%
+  summarize(total_count = sum(flight_count))
+
+overall <- group_by(df, airline, status) %>%
+  summarize(fcount = sum(flight_count)) %>%
+  left_join(airline_total, by = c('airline' = 'airline')) %>%
+  mutate(pct = fcount / total_count)
+
+overall
+```
+
+Lets visualize the results to get a better sense of the difference:
+
+```{r, eval = T}
+ggplot(overall, aes(x = airline, y = fcount/1000, fill = status)) +
+  geom_col() +
+  theme_bw() +
+  labs(x = element_blank(),
+       y = 'Flight Count (Thousands)',
+       title = 'Total Flights Across 5 Cities',
+       subtitle = 'By Arrival Status')
+```
+
+Clearly, AM West has more flights, but it isn't very clear which airline is generally more likely to be delayed or not. Here's another view that might make that easier:
+
+```{r, eval = T}
+filter(overall, status == 'delayed') %>%
+ggplot(aes(x = airline, y = pct)) +
+  geom_col() +
+  theme_bw() +
+  labs(x = element_blank(),
+       y = element_blank(),
+       title = 'Rate of Delayed Flights Across 5 Cities') +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_flip()
+```
+
+So it looks like in general, if you have a choice to fly with one of these two airlines, the safer bet would be AM West. There are more flights to choose from and a lower chance of finding yourself in a delayed flight.
+
+---
+
+The data includes 5 arrival cities that we can compare, if you happen to be flying to one of those cities and need to decide which airline to book. We'll be do a very similar comparison with a bit more detail.
+
+```{r, eval = T}
+airline_port_total <- group_by(df, airline, airport) %>%
+  summarize(total_count = sum(flight_count))
+
+airports <- left_join(df, airline_port_total, by = c('airline' = 'airline', 'airport' = 'airport')) %>%
+  mutate(pct = flight_count / total_count)
+
+head(airports)
+```
+
+Now that our second dataset is prepared, lets see how the airlines compare by city:
+
+```{r, eval = T}
+ggplot(airline_port_total, aes(x = airport, y = total_count/1000, fill = airline)) +
+  geom_col(position = 'dodge') +
+  theme_bw() +
+  labs(x = element_blank(),
+       y = 'Flight Count (Thousands)',
+       title = 'Flight Count by City and Airline')
+```
+
+Wow. If you're flying to Phoenix you're clearly more likely to find more options flying AM West and if you're heading to Seattle, Alaska airlines should have more options for you.
+
+What about delays?
+
+```{r, eval = T}
+filter(airports, status == 'delayed') %>%
+  ggplot(aes(x = airport, y = pct, fill = airline)) +
+  geom_col(position = 'dodge') + 
+  theme_bw() +
+  labs(x = element_blank(),
+       y = element_blank(),
+       title = 'Comparison of Delay Rate by City') +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_flip()
+
+```
+
+Wow, thought we were almost done here! It looks like for every one of these cities, AM West is more likely to be delayed! This contradicts the calculation from earlier. 
+
+My guess is that since AM West has so many flights in Phoenix with a relatively low delay rate, the weighted average is brought down. Also, Alaska airlines delay rates in the top 3 cities are all above 10%, so the weighted average is kept high.
+
+Lets look at the percent contribution of delays for each airline:
+
+```{r, eval = T}
+airline_total <- group_by(df, airline) %>%
+  summarize(line_total = sum(flight_count))
+
+share <- filter(airports, status == 'delayed') %>%
+  left_join(airline_total, by = ('airline' = 'airline')) %>%
+  mutate(pct_share = total_count / line_total * pct)
+
+ggplot(share, aes(x = airline, y = pct_share, fill = airport)) +
+  geom_col() +
+  theme_bw() +
+  labs(x = element_blank(),
+       y = element_blank(),
+       title = 'Delay Rate by Airline',
+       subtitle = 'With Airport Weighted Contribution') +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_flip() +
+  scale_fill_discrete(name = element_blank())
+```
+
+It looks like Alaska's delays in Seattle really make them look bad.
+
+### Conclusion
+
+The numbers don't lie, you're better off sticking with Alaska airlines, even though their numbers overall seem worse.
