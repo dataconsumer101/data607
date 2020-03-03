@@ -238,7 +238,9 @@ Just out of curiosity, what were the paintings with 2 and 15 elements, and which
 
 ```{r}
 filter(s_count, total_count == 2 | total_count == 15) %>%
-  inner_join(bob, by = c('season' = 'season', 'ep_num' = 'ep_num'))
+  inner_join(bob, by = c('season' = 'season', 'ep_num' = 'ep_num')) %>%
+  group_by(episode, title) %>%
+  summarize(total_elements = sum(count))
 ```
 
 Not sure what the *Guest* element is, but it seems to be one of two elements for the paintings with only two elements.
