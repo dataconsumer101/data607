@@ -1,0 +1,249 @@
+---
+title: "Data607 Project 2"
+author: "Leo Yi"
+date: "2020-03-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Intro
+
+For this project, we'll be taking 3 data sources referenced from recent discussion topics and analyzing them. We'll need to tidy the datasets, then take a brief dive into what kind of story the data wants to tell us.
+
+We'll be using a few pages that we'll load first:
+
+```{r, eval = T, error=T, message=F, warning=F}
+library(tidyr)
+library(scales)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(lubridate)
+library(openxlsx)
+```  
+
+
+#### 1. Weather by Month from usclimatedata.com
+
+This table takes a look at the average high, low, precipiation, and snow by month for your local area. The website determined LaGuardia Airport is closest to me, so we're taking a look at a snapshot of that table taken on March 2, 2020. Let's load the data and take a look:
+
+```{r cars}
+weather <- read.csv('https://raw.githubusercontent.com/dataconsumer101/data607/master/laguardia_weather.csv', stringsAsFactors = F)
+head(weather)
+```
+
+A few things we need to tidy this dataset:
+* We need to rename the first column to something more meaningful
+* It might be useful to convert the month names into numbers or a factor so that we can plot it in chronological order
+
+```{r, eval = T}
+names(weather)[1] <- 'measure'
+w <- gather(weather, month, value, -measure)
+w$month <- factor(w$month, levels = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'))
+str(w)
+```
+
+Now that the data is ready, lets plot out the data and share some thoughts:
+
+```{r, eval = T}
+# avg high and low temps by month
+filter(w, substr(measure,1,7) == 'Average') %>%
+ggplot(aes(x = month, y = value, color = measure, group = measure)) +
+  geom_line() +
+  theme_bw() +
+  labs(x = element_blank(), y = element_blank(), title = 'Average Temperature by Month, 1981 - 2010', subtitle = 'LaGuardia Airport') +
+  theme(legend.title = element_blank())
+
+filter(w, substr(measure,1,7) != 'Average') %>%
+ggplot(aes(x = month, y = value, color = measure, group = measure)) +
+  geom_line() +
+  theme_bw() +
+  labs(x = element_blank(), y = element_blank(), title = 'Average Rain and Snow by Month, 1981 - 2010', subtitle = 'LaGuardia Airport') +
+  theme(legend.title = element_blank())
+```
+
+Not surprisingly, the hottest months are during summer. It looks like from June to mid August the temperature averages 80 or above, which is very warm. Also not a surprise, the coldest months are in winter, but its a bit harder to see the dip there because the chart above is setup as a traditional calendar, Jan - Dec.
+
+Regarding rain and snow, there's virtually no snow between May and November and it typically peaks in February. We haven't had any snow this season, so I wonder how our current year compares to the climate data here. Rain is pretty even throughout the year, peaking in July and also dipping during the winter months.
+
+```{r, eval = T}
+w$month <- factor(w$month, levels = c('Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'))
+
+filter(w, substr(measure,1,7) == 'Average') %>%
+ggplot(aes(x = month, y = value, color = measure, group = measure)) +
+  geom_line() +
+  theme_bw() +
+  labs(x = element_blank(), y = element_blank(), title = 'Average Temperature by Month, 1981 - 2010', subtitle = 'LaGuardia Airport') +
+  theme(legend.title = element_blank()) +
+  geom_hline(yintercept = 32, linetype = 2)
+
+filter(w, substr(measure,1,7) != 'Average') %>%
+ggplot(aes(x = month, y = value, color = measure, group = measure)) +
+  geom_line() +
+  theme_bw() +
+  labs(x = element_blank(), y = element_blank(), title = 'Average Rain and Snow by Month, 1981 - 2010', subtitle = 'LaGuardia Airport') +
+  theme(legend.title = element_blank())
+```
+
+Here's a look at the average temperature chart with winter in the middle and a horizontal line at the freezing point. It looks like there's danger of freezing temperatures from December to mid February. Watch out for driving on icy roads in the morning!
+
+---
+
+#### MBTA
+
+Next, lets take a look at MBTA data, which details average ridership across different public transportation modes in Boston. W
+
+```{r, eval = T}
+mbta <- read.xlsx('https://github.com/chitrarth2018/607-Project-2/blob/master/mbta.xlsx?raw=true', startRow = 2)
+head(mbta)
+```
+
+List of action items to tidy:
+* Remove the first column as we don't need row numbers as a column
+* Take the wide month columns and bring them into their own field
+* Convert the month to a date datatype
+* Remove summary values 
+
+```{r, eval = T}
+mbta2 <- select(mbta, -X1) %>%
+  gather(month, avg_riders, -mode) %>%
+  mutate(month = as.Date(str_c(month, '-01')))
+
+#just transportation modes
+t <- filter(mbta2, mode != 'TOTAL' & mode != 'All Modes by Qtr' & mode != 'Pct Chg / Yr')
+
+#summary fields
+ts <- filter(mbta2, mode == 'TOTAL' | mode == 'All Modes by Qtr' | mode == 'Pct Chg / Yr')
+```
+
+Okay, lets take a quick look at average ridership by mode:
+
+```{r}
+ggplot(t, aes(x = month, y = avg_riders, color = mode)) +
+  geom_line() +
+  theme(legend.title = element_blank()) +
+  labs(x = element_blank(), y = element_blank(), title = 'Average Ridership by Transportation Mode', subtitle = 'MBTA Data') +
+  theme_bw()
+```
+
+It looks like heavy rail has the most riders, followed by bus, light rail, and then commuter rail. All other modes seem insignificant compared to the top 4. Its possible the capacity of the others is highly limited and has special considerations, like special router or special passengers.  
+
+When looking at the top 3 transportation modes, it looks like there's some seasonality in the recent years, specifically ridership being the lowest at the end of the year, possibly due to fewer commuters during holidays. Let's take a look at ridership by month with years split out for the top 3 modes:
+
+```{r}
+filter(t, mode == 'Heavy Rail' | mode == 'Bus' | mode == 'Light Rail') %>%
+  mutate(mo = month(month), yr = year(month)) %>%
+  ggplot(aes(x = mo, y = avg_riders, color = factor(yr))) +
+  geom_line() +
+  facet_wrap(~mode, nrow = 3, scales = 'free_y') +
+  scale_x_continuous(breaks = seq(1,12,1)) +
+  theme(legend.title = element_blank()) +
+  labs(x = element_blank(), y = element_blank(), title = 'Average Riders by Month', subtitle = 'Top 3 Transportation Modes - MBTA') +
+  theme_bw()
+  
+```
+
+Well, it looks like not only does ridership drop in December, it also seems to dip again in August. This could be because there's students and other commuters on summer holidays.
+
+Just out of curosity, lets take a look at ridership for the least popular modes:
+
+```{r}
+filter(t, mode != 'Heavy Rail' & mode != 'Bus' & mode != 'Light Rail' & mode != 'Commuter Rail') %>%
+  mutate(mo = month(month), yr = year(month)) %>% 
+  ggplot(aes(x = mo, y = avg_riders, color = factor(yr))) +
+  geom_line() +
+  facet_wrap(~mode, nrow = 3, scales = 'free_y') +
+  scale_x_continuous(breaks = seq(1,12,1)) +
+  theme(legend.title = element_blank()) +
+  labs(x = element_blank(), y = element_blank(), title = 'Average Riders by Month', subtitle = 'Top 3 Transportation Modes - MBTA') +
+  theme_bw()
+  
+```
+
+* First, it looks like there was a spike in Boat ridership in March 2007, but generally boat ridership reaches its peak in summer.
+* Private Bus ridership looks to be down to a new level since the beginning of 2009.
+* RIDE has been steadily increasing every year.
+* Trackless Trolley has been constant except for the second half of 2010.
+* All of the above follow the same holiday trend where ridership is down at the end of the year.
+
+It would be interesting to see other data points regarding time, money, and trip counts to provide further analysis.
+
+---
+
+#### Bob Ross
+
+Lets take a quick look at the dataset for Bob Ross Paintings. 
+
+```{r}
+br <- read.csv('https://raw.githubusercontent.com/dataconsumer101/data607/master/bob_ross.csv', stringsAsFactors = F)
+head(br)
+```
+
+It look like thematic elements within each painting is tallied. Each painting is associated to a season and an episode. Let's add the elements to a field and count them that way, as well as add in the season number as a separate field:
+
+```{r}
+names(br)[1] <- 'episode'
+names(br)[2] <- 'title'
+bob <- gather(br, element, count, -episode, -title) %>%
+  filter(count == 1) %>%
+  mutate(season = as.numeric(substr(episode, 2,3)),
+         ep_num = as.numeric(substr(episode, 5,6)),
+         element = str_to_title(str_replace_all(element, '_', ' '))
+         )
+head(bob)
+```
+
+* Edited the field names to avoid caps lock, just because its easier to work with. 
+* Also formatted the column names to make them easier to read. 
+
+Let's visualize this data to make it easier to understand. Lets start by looking at the most and also least most used elements:
+
+```{r}
+group_by(bob, element) %>%
+  summarize(total_count = sum(count)) %>%
+  ggplot(aes(x = reorder(element, total_count), y = total_count)) +
+  geom_col() +
+  coord_flip() +
+  theme_bw() +
+  labs(x = element_blank(), y = element_blank(), title = 'Most Popular Thematic Elements Used by Bob Ross') +
+  theme(text = element_text(size = 7)) 
+
+```
+
+The top two elements are tree and trees, which are arguably the same thing. The next two are types of trees, so its safe to say that Bob Ross really incorporated trees into his paintings. Most of these elements are found in nature.
+
+Lets take a look at the total number of elements in each painting:
+
+```{r}
+s_count <- group_by(bob, season, ep_num) %>%
+  summarize(total_count = sum(count))
+
+ggplot(s_count, aes(x = total_count)) +
+  geom_density() +
+  labs(x = element_blank(), y = element_blank(), title = 'Probabilty Density Chart of Thematic Elements Per Painting') +
+  theme_classic()
+
+summary(s_count$total_count)
+mean(s_count$total_count)
+
+boxplot(s_count$total_count)
+```
+
+It looks like there's usually about 8 elements in each painting, but as few as 2 and at most there have been 15 elements.
+
+Just out of curiosity, what were the paintings with 2 and 15 elements, and which ones were they?
+
+```{r}
+filter(s_count, total_count == 2 | total_count == 15) %>%
+  inner_join(bob, by = c('season' = 'season', 'ep_num' = 'ep_num'))
+```
+
+Not sure what the *Guest* element is, but it seems to be one of two elements for the paintings with only two elements.
+
+Mountain Oval sounds like it has a lot of elements!
+
+<center><img src='https://www.twoinchbrush.com/images/painting172.png'></center>
+
