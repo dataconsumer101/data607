@@ -1,0 +1,30 @@
+{			
+	"Title" : "The Complete Manual of Woodworking"
+	"Subtitle" : "A Detailed Guide to Design, Techniques, and Tools for the Beginner and Expert"
+	"Author" : ["Albert Jackson", "David Day"]
+	"Year" : 1996
+	"Cover" : "Paperback"
+	"Edition" : 1
+	"Pages" : 320			
+	"Price" : 19.89
+}
+{
+	"Title" : "Essentail Joinery"
+	"Subtitle" : "The Fundamental Techniques Every Woodworker Should Know"
+	"Author" : "Marc Spagnuolo"
+	"Year" : 2019
+	"Cover" : "Paperback"
+	"Edition" : 1
+	"Pages" : 216
+	"Price" : 17.75
+}
+{
+	"Title" : "Great Book of Woodworking Tips"
+	"Subtitle" : "Over 650 Ingenious Workshop Tips, Techniques, and Secrets from the Experts at American Woodworker"
+	"Author" : "Randy Johnson"
+	"Year" : 2012
+	"Cover" : "Paperback"
+	"Edition" : 1
+	"Pages" : 336	
+	"Price" : 15.99
+}

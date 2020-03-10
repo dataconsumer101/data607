@@ -1,0 +1,48 @@
+<LIBRARY>
+	<BOOK>
+		<TITLE>The Complete Manual of Woodworking</TITLE>
+		<SUBTITLE>A Detailed Guide to Design, Techniques, and Tools for the Beginner and Expert</SUBTITLE>
+		<AUTHOR>
+			<FIRST_NAME>Albert</FIRST_NAME>
+			<LAST_NAME>Jackson</LAST_NAME>
+		</AUTHOR>
+		<AUTHOR>
+			<FIRST_NAME>David</FIRST_NAME>
+			<LAST_NAME>Day</LAST_NAME>
+		</AUTHOR>
+		<YEAR>1996</YEAR>
+		<COVER>Paperback</COVER>
+		<EDITION>1</EDITION>
+		<PAGES>320</PAGES>
+		<PRICE>19.89</PRICE>
+	</BOOK>
+
+	<BOOK>
+		<TITLE>Essential Joinery</TITLE>
+		<SUBTITLE>The Fundamental Techniques Every Woodworker Should Know</SUBTITLE>
+		<AUTHOR>
+			<FIRST_NAME>Marc</FIRST_NAME>
+			<LAST_NAME>Spagnuolo</LAST_NAME>
+		</AUTHOR>
+		<YEAR>2019</YEAR>
+		<COVER>Paperback</COVER>
+		<EDITION>1</EDITION>
+		<PAGES>216</PAGES>
+		<PRICE>17.75</PRICE>
+	</BOOK>
+
+	<BOOK>
+		<TITLE>Great Book of Woodworking Tips</TITLE>
+		<SUBTITLE>Over 650 Ingenious Workshop Tips, Techniques, and Secrets from the Experts at American Woodworker</SUBTITLE>
+		<AUTHOR>
+			<FIRST_NAME>Randy</FIRST_NAME>
+			<LAST_NAME>Johnson</LAST_NAME>
+		</AUTHOR>
+		<YEAR>2012</YEAR>
+		<COVER>Paperback</COVER>
+		<EDITION>1</EDITION>
+		<PAGES>336</PAGES>
+		<PRICE>15.99</PRICE>
+	</BOOK>
+
+</LIBRARY>
