@@ -1,0 +1,69 @@
+---
+title: "Data607 Assignment 7"
+author: "Leo Yi"
+date: "2020-03-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Working with XML and JSON in R
+
+This assignment requires us to create objects in html, xml, and json and then load them into separate dataframes to compare.
+
+I chose the subject of woodworking, and selected the top 3 books when searched on amazon.
+
+I created the html, xml, and json in text files and saved them and uploaded them to the web.
+
+Lets load some packages and take a look:
+
+#### Packages
+
+```{r, eval = T, error = F, message = F, warning = F}
+library(RCurl)
+library(XML)
+library(jsonlite)
+```
+
+#### HTML
+
+```{r}
+html_o <- 'https://raw.githubusercontent.com/dataconsumer101/data607/master/books.html'
+html_c <- getURLContent(html_o)
+html_l <- readHTMLTable(html_c)
+html_df <- html_l[[1]]
+head(html_df)
+```
+
+#### XML
+
+```{r}
+xml_o <- 'https://raw.githubusercontent.com/dataconsumer101/data607/master/books.xml'
+xml_c <- getURLContent(xml_o)
+xml_p <- xmlParse(xml_c)
+xml_df <- xmlToDataFrame(xml_p)
+head(xml_df)
+```
+
+#### JSON
+
+```{r}
+json_o <- 'https://raw.githubusercontent.com/dataconsumer101/data607/master/books.json'
+json_r <- fromJSON(json_o)
+json_df <- json_r[[1]]
+head(json_df)
+```
+
+#### Differences in Author
+
+```{r}
+html_df[1,]$Author
+xml_df[1,]$AUTHOR
+xml_df[1,]$AUTHOR2
+json_df[1,]$Author
+```
+
+* For the most part, the data in each of these formats looks the same-- as long as there is only one value per field.
+* If we look at the first book with 2 authors, we can see the differences in how the values appear. This is also influenced by how they were entered into each of the objects.
