@@ -1,0 +1,87 @@
+---
+title: "Data607 Assignment 9"
+author: "Leo Yi"
+date: "2020-03-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### NYT Movie Reviews
+
+This week's assignment is to access the NYT web API. We'll get data in JSON format and convert it into a dataframe.
+
+Let's load the packages we'll use:
+
+```{r, warnings = F}
+library(httr)
+library(jsonlite)
+library(dplyr)
+```
+
+### Authentication and Query Configuration
+
+We'll need to setup some specific information to use in our API call:
+
+```{r}
+key <- 'nrs4EBIHbZqiuZK3GFOAwGFO3vMHEfgY'
+path = '/svc/movies/v2/reviews/all.json'
+query = list(`api-key` = key,
+             offset = 0)
+```
+
+### Forming the Dataset
+
+The NYT API allows 10 calls per minute and 4,000 requests per day. If we wanted to gather the entire dataset, we could try to time the loops. Perhaps if we get 429 status code, we can add a minute long pause.
+
+For this exercise, we'll only be looking at 10 requests worth of data, with 20 observations each. That should leave us with a 200 row dataset of the latest movies that have been reviewed by the NYT.
+
+```{r}
+for (i in 0:10) {
+  
+  # set the offset parameter based on the loop number
+  query[[2]] <- i * 20
+
+  # modify the url to be called
+  url <- modify_url('https://api.nytimes.com', 
+                    path = path,
+                    query = query)
+  
+  # call the API
+  response <- GET(url)  
+
+  # exit the loop if the response is not a success
+  if (response$status_code != 200) {
+    print(i)
+    break
+    }
+  
+  # extract the raw content from the response
+  raw_content <- rawToChar(response$content)
+  
+  # convert the raw content into a json object
+  json <- fromJSON(raw_content)
+  
+  if (i == 0) {
+    # flatten the response into a dataframe
+    df <- flatten(json$results)
+    
+  } else {
+    # flatten the response into a dataframe
+    df_new <- flatten(json$results)
+    
+    # combine the new dataframe into the initial one
+    df <- bind_rows(df, df_new)
+    
+    # remove the dataset of this current loop
+    rm(df_new)
+  }
+  
+}
+
+# preview the dataset
+str(df)
+```
+
