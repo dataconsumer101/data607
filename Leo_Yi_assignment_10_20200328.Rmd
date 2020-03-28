@@ -1,0 +1,326 @@
+---
+title: "Data607 Assignment 10"
+author: "Leo Yi"
+date: "3/28/2020"
+output:
+  html_document:
+    highlight: pygments
+    theme: paper
+    toc: TRUE
+    toc_depth: 3    
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+      number_sections: true    
+
+---
+
+<style type="text/css">
+
+code.r{
+  font-size: 12px;
+  font-family: Consolas;
+}
+
+pre {
+  font-size: 12px;
+}
+
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## tidytextmining ch 2
+
+This week's assignment is to run the primary code for chapter 2 of 'Text Mining with R' which can be found [here](https://www.tidytextmining.com/sentiment.html).
+
+First, we'll run the code found on the site to demonstrate sentiment analysis in R in book written by Jane Austin.
+
+Afterwards, we'll extend the practice using our own example and another sentiment lexicon.
+
+### Running the demonstrated code
+
+```{r}
+#install.packages('tidytext')
+#install.packages('textdata')
+library(tidytext)
+
+get_sentiments('afinn')
+get_sentiments('bing')
+get_sentiments('nrc')
+
+
+library(janeaustenr)
+library(dplyr)
+library(stringr)
+
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]", 
+                                                 ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+tidy_books %>%
+  filter(book == "Emma") %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE)
+
+
+library(tidyr)
+
+jane_austen_sentiment <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = linenumber %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+
+library(ggplot2)
+
+ggplot(jane_austen_sentiment, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+
+
+pride_prejudice <- tidy_books %>% 
+  filter(book == "Pride & Prejudice")
+
+pride_prejudice
+
+
+afinn <- pride_prejudice %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  group_by(index = linenumber %/% 80) %>% 
+  summarise(sentiment = sum(value)) %>% 
+  mutate(method = "AFINN")
+
+bing_and_nrc <- bind_rows(pride_prejudice %>% 
+                            inner_join(get_sentiments("bing")) %>%
+                            mutate(method = "Bing et al."),
+                          pride_prejudice %>% 
+                            inner_join(get_sentiments("nrc") %>% 
+                                         filter(sentiment %in% c("positive", 
+                                                                 "negative"))) %>%
+                            mutate(method = "NRC")) %>%
+  count(method, index = linenumber %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+
+
+bind_rows(afinn, 
+          bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+
+
+get_sentiments("nrc") %>% 
+  filter(sentiment %in% c("positive", 
+                          "negative")) %>% 
+  count(sentiment)
+
+get_sentiments("bing") %>% 
+  count(sentiment)
+
+
+bing_word_counts <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+bing_word_counts
+
+
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+
+
+custom_stop_words <- bind_rows(tibble(word = c("miss"), 
+                                      lexicon = c("custom")), 
+                               stop_words)
+
+custom_stop_words
+
+
+library(wordcloud)
+
+tidy_books %>%
+  anti_join(stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+
+
+library(reshape2)
+
+tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+
+
+
+PandP_sentences <- tibble(text = prideprejudice) %>% 
+  unnest_tokens(sentence, text, token = "sentences")
+
+
+PandP_sentences$sentence[2]
+
+
+
+austen_chapters <- austen_books() %>%
+  group_by(book) %>%
+  unnest_tokens(chapter, text, token = "regex", 
+                pattern = "Chapter|CHAPTER [\\dIVXLC]") %>%
+  ungroup()
+
+austen_chapters %>% 
+  group_by(book) %>% 
+  summarise(chapters = n())
+
+
+bingnegative <- get_sentiments("bing") %>% 
+  filter(sentiment == "negative")
+
+wordcounts <- tidy_books %>%
+  group_by(book, chapter) %>%
+  summarize(words = n())
+
+tidy_books %>%
+  semi_join(bingnegative) %>%
+  group_by(book, chapter) %>%
+  summarize(negativewords = n()) %>%
+  left_join(wordcounts, by = c("book", "chapter")) %>%
+  mutate(ratio = negativewords/words) %>%
+  filter(chapter != 0) %>%
+  top_n(1) %>%
+  ungroup()
+```
+
+## Voltaire using Loughran
+
+For our practice, lets look at two books by Voltaire and analyze the sentiment from the loughran lexicon. The two books have been loaded with the wikisourcer package, tidied with dplyr, then plotted with ggplot. The two books we're working with today are:
+
+  * Candide
+  * Micromegas
+  
+### Loading the books  
+  
+Lets begin by loading the books and the lexicon:
+
+```{r}
+options(scipen = 100)
+library(scales)
+
+loughran <- get_sentiments('loughran')
+
+#install.packages("wikisourcer")
+library(wikisourcer)
+
+canidide <- wikisource_book(url = "https://en.wikisource.org/wiki/Candide")
+micromegas <- wikisource_book(url = "https://en.wikisource.org/wiki/Micromegas")
+
+# Lets combine them into one dataframe
+voltaire <- bind_rows(canidide, micromegas)
+```
+
+### Tidying the Text
+
+Next, lets tidy up the data so that we can use them in plots.
+
+```{r}
+tidy_vbooks <- group_by(voltaire, title) %>%
+  mutate(linenumber = row_number(),
+         chapter = as.integer(str_extract(url, regex("\\d+$", ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+# This has all words and sentiments
+vsentiment <- inner_join(tidy_vbooks, loughran, by = c('word' = ('word')))
+
+# Lets count words by chapter to determine a denomiator
+vchap <- group_by(vsentiment, title, chapter) %>%
+  summarise(ccount = n())
+
+# This shows words and the frequency percent by chapter
+vsum <- group_by(vsentiment, title, chapter, sentiment) %>%
+  summarise(count = n()) %>%
+  inner_join(vchap, by = c('title' = 'title', 'chapter' = 'chapter')) %>%
+  mutate(pct = count / ccount)
+```
+
+### Visualize it
+
+Here, we'll take a look at some plots and make some observations.
+
+```{r}
+# Sentiment percent by chapter and book
+ggplot(vsentiment, aes(x = chapter, fill = sentiment)) +
+  geom_bar(position = 'fill') +
+  facet_wrap(~title, nrow = 2)
+```
+
+This view provides an overview, but lets break it down a bit so its easier to read.
+
+```{r}
+# Sentiment percent by chapter for Canidide
+filter(vsum, title == 'Candide') %>%
+ggplot(aes(x = chapter, y = pct, fill = sentiment)) +
+  geom_col() +
+  facet_wrap(~sentiment, nrow = 6, scale = 'free_y') +
+  scale_y_continuous(labels = percent_format(accuracy = 1))
+```
+
+It looks like the beginning can be superflous and positive. Also, it looks like chapter 15 is the least negative chapter of all.
+
+```{r}
+# Sentiment percent by chapter for Micromegas
+filter(vsum, title == 'Micromegas') %>%
+  ggplot(aes(x = chapter, y = pct, fill = sentiment)) +
+  geom_col() +
+  facet_wrap(~sentiment, nrow = 6, scale = 'free_y') +
+  scale_y_continuous(labels = percent_format(accuracy = 1))
+```
+
+This book looks like it start out positive and loses positivity throughout the book, ending on a superflous note.
+
+```{r}
+# Count words in these two books
+vcount <- group_by(vsentiment, word, sentiment) %>%
+  summarize(n = n()) %>%
+  arrange(desc(n))
+
+# Take a look at top 10 words for each sentiment
+vcount %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+```
+
+Looking at this makes me wonder if the sentiment analysis would differ with different translators.
+
