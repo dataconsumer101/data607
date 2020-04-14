@@ -1,0 +1,98 @@
+---
+title: "Data607 Assignment 12"
+author: "Leo Yi"
+date: "4/13/2020"
+output:
+  html_document:
+    highlight: pygments
+    theme: paper
+    toc: TRUE
+    toc_depth: 3    
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+      number_sections: true    
+
+---
+
+<style type="text/css">
+
+code.r{
+  font-size: 12px;
+  font-family: Consolas;
+}
+
+pre {
+  font-size: 12px;
+}
+
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## YouTube Recommender Systems
+
+YouTube is the undoubtedly the best known online video content provider. There's multiple recommender systems in play contributing to YouTube's success. The goal is to keep users engaged for as long as possible and maximize the ads that they see. A few of the systems they use to recommend content include:
+
+* What content to promote to show on the home screen
+* What content to suggest after a video ends
+* Which ads to show to a user
+
+## Scenario Design Analysis
+
+For this assignment, lets focus on one of the recommendor systems that YouTube uses- the one that decides which ad to show.
+
+First, I'd like to provide a brief overview as to how online ads work. Companies essentially buy views from YouTube, directly or through a third party, under an agreed upon rate for a specific demographic. Different demographics demand different rates and one person can fit into multiple demographics. 
+
+Traditionally in TV advertising, there are major demographics that are usually guaranteed, but fortunately online video has more data about who's viewing the content. This allows ad buyers to specify the demographic they'd like to target, which YouTube is capable of delivering.
+
+We won't go further into the economics of online video advertising- but I will say that YouTube's ad recommendation system is capable of delivering ads more effectively to a specific demographic rather than broadcasting ads to a large audience, which makes each impression more valuable. You can pay 6 million to play your company's ad for 30 seconds during the superbowl and reach almost every American-- or you can choose to serve your ads to parents with children who are looking to save money and also very likely to be in the market for life insurance.
+
+### Who are your target users?
+
+Lets discuss what YouTube knows about you. Let's look at two groups- anonymous users and account users.
+
+#### Anonymous Users
+
+The moment you visit YouTube, your profile begins to build. YouTube keeps track of the videos you watch and how long you watch them. Each of the videos is categorized and tagged and with each data point you provide about yourself, YouTube can narrow down your profile.
+
+For ads, there are companies who want to reach everyone-- these are likely the ads you'll see first, as YouTube knows little about who you actually are.
+
+#### Account Users
+
+When you create an account, all of your viewing habits are saved. On top of that, you are capable of subscribing to channels and liking specific videos. This helps YouTube better recommend the content you'll see next. Along with the profile you update with your personal information, YouTube has a much better idea of what you are and what you're interested in. This not only allows YouTube to match your demographic, but it also allows them to recommend relevant products along with the topics you're interested in.
+
+Watching a DIY video about how to change your oil? How about watching an ad for an auto parts store or specific tools that you might need?
+
+### What are their key goals?
+
+This is a bit tricky because YouTube's users typically don't want to watch ads. This is where online video ads shine over traditional TV ads. With TV, your programming is interrupted multiple time to watch groups of 30 second ads. Each show fits into a specific time slot and has a specific amount of ad space that needs to be filled. With online video, YouTube allows users to skip most ads after 5 seconds. There is also the option to purchase ads that must be watched before videos, but in my experience, they're not as popular- maybe because I typically skip the entire video if I'm forced to watch an unskippable ad.
+
+### How can you help them accomplish their goals?
+
+This ties in with YouTube's other recommendation systems. Users come to YouTube to be entertained, to learn, to consume content. If YouTube can maximize the number of videos you watch, they have more opportunities to serve ads. The more content being consumed, the more ads they can sell. This is their core business. Luckily, people create most of the content on their own to get a share of the ad revenue-- all YouTube has to do is make sure that the videos that are uploaded are served up for selection to people who are interested in viewing it.
+
+## Reverse Engineering the Ad Server
+
+We discussed parts of this already, but the system guesses who you are, and what you're interested in. Once it gets to know you and what you're watching, it can select the ad to serve you from the pool of ads that companies and people are paying for.
+
+Lets start with anonymous users. I wouldn't be surprised if YouTube didn't serve you an ad on the first video you watch. As you watch more videos, it doesn't take long for the system to guess what age group you are or what you're interested in. This allows them to serve you a general ad that's targeted towards adults. 
+
+You begin watching ads on home improvement, specifically, how to remodel your bathroom. The system recommends more content about remodeling bathrooms, as well as remodelling homes in general, as well as videos about plumbing. The path you take leads you further down a hole of content consumption. Meanwhile, the system serves you ads about home improvement stores, goods, and an online site that lets you find local handymen.
+
+You then create an account and being liking specific videos. You even find a channel that you'd like to explore more of, so you subscribe after watching so you can check back later. You also sign up for notifications for new videos by some of those channels, because you're still interested in new content. You also adjust your profile to include your birthday so that you can view age restricted content.
+
+YouTube has built up a robust profile on you and your interests, as well as your ongoing and recent interests. You'll see ads that are both related to the videos you're watching, and also some that might just be suited for someone like you. 
+
+
+
+
+
+
+
+
+
+
+
