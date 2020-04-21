@@ -1,0 +1,167 @@
+---
+title: "Data607 Project 4"
+author: "Leo Yi"
+date: "4/20/2020"
+output:
+  html_document:
+    highlight: pygments
+    theme: cosmo
+    toc: TRUE
+    toc_depth: 3    
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+      number_sections: true    
+
+---
+
+<style type="text/css">
+
+code.r{
+  font-size: 12px;
+  font-family: Consolas;
+}
+
+pre {
+  font-size: 12px;
+}
+
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Spam or Ham
+
+Today, we'll be looking at a group of spam and ham messages (not spam). We'll gather the data into a single dataframe, and then separate that dataset into two sections- one to train a model, and another to test it.
+
+The files were downloaded from [here](https://spamassassin.apache.org/old/publiccorpus/) according to the project instructions found on blackboard and decompressed into my local computer. I'll share the specific files I downloaded below, but you'll need to unpack the files and update the local directories to make this rmarkdown work on your computer.
+
+* 20030228_easy_ham.tar.bz2
+* 20030228_spam.tar.bz2
+
+### packages
+
+Let's load the packages we'll be using for this exercise:
+
+```{r, message = F, warning = F}
+library(stringr)
+library(dplyr)
+library(tm)
+library(randomForest)
+```
+
+### Import
+
+Lets start by setting the local directories where we'll find all the files:
+
+```{r}
+# string paths in windows
+ham_path <- 'C:/Downloads/docs/data607/spamham/easy_ham'
+spam_path <- 'C:\\Downloads\\docs\\data607\\spamham\\spam'
+```
+
+Let's loop through all the files in each folder and add them to a dataframe:
+
+```{r, warning = F}
+hlist <- list.files(ham_path)
+slist <- list.files(spam_path)
+
+hams <- NA
+spams <- NA
+
+for (i in 1:length(hlist)) {
+  current_file <- str_c(ham_path, '/', hlist[i], sep = "")
+  read_file <- readLines(current_file)
+  one_line <- paste(read_file, collapse = '\n')
+  hams[i] <- one_line
+}
+
+for (i in 1:length(slist)) {
+  current_file <- str_c(spam_path, '/', slist[i], sep = "")
+  read_file <- readLines(current_file)
+  one_line <- paste(read_file, collapse = '\n')
+  spams[i] <- one_line
+}
+
+ham <- data.frame(fn = hlist,
+                 text = unlist(hams),
+                 type = 'ham',
+                 stringsAsFactors = F)
+
+spam <- data.frame(fn = slist,
+                 text = unlist(spams),
+                 type = 'spam',
+                 stringsAsFactors = F)
+
+# dataframe with filename, email text, and spam type
+df_all <- bind_rows(ham, spam) %>%
+  mutate(type = as.factor(type))
+```
+
+### Working with the Corpus
+
+Here we'll take the text from each email, clean it up, and then create a dataframe that contains all the data.
+
+```{r, warning = F}
+corpus <- Corpus(VectorSource(df_all$text))
+corpus <- tm_map(corpus, tolower)
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeWords, stopwords())
+corpus <- tm_map(corpus, stripWhitespace)
+corpus <- tm_map(corpus, stemDocument)
+
+dtm <- DocumentTermMatrix(corpus)
+
+# Lets keep terms that occur in at least 1% of the emails
+dtm_small <- removeSparseTerms(dtm, 0.99)
+
+dm <- as.matrix(dtm_small)
+dfc <- data.frame(dm)
+
+# final dataframe with the first column as the email spam type
+dfs <- bind_cols(select(df_all, spam_type = type), dfc)
+
+```
+
+
+### Split Datasets
+
+Here we'll split the dataframe we created into a testing and training set. We'll try to split the dataframe in half and check to see if there's a reasonable distribution of both types.
+
+```{r}
+set.seed(222)
+ss <- floor(nrow(dfs) * 0.75)
+si <- sample(seq_len(nrow(dfs)), ss)
+
+train <- dfs[si,]
+test <- dfs[-si,]
+
+table(train$spam_type)
+table(test$spam_type)
+```
+
+It looks like both the training set has a decent distribution of spam and ham emails.
+
+### Random Forest
+
+We'll use the random forest model to train a model and then make our predictions and see how well it fits.
+
+```{r}
+# rfm <- randomForest(train[,2:ncol(train)], train$spam_type)
+rfm <- randomForest(spam_type ~ ., data = train)
+
+test$pred <- predict(rfm, newdata = test)
+
+table(test$spam_type, test$pred)
+```
+
+### Results
+
+Wow, is that right? The model correctly predicted 99.87% or 750 / 751 emails. That seems too good to be true. I'm wondering if I made a mistake somewhere.
+
+
+
+
+
